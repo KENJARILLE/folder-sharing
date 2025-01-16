@@ -43,7 +43,7 @@
     <script type="module">
         // Firebase configuration (for Firestore)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, query, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -109,7 +109,7 @@
         }, (error, result) => {
             if (result && result.event === "success") {
                 console.log("File uploaded to Cloudinary:", result.info);
-                fetchUploadedFiles(folderId);  // Refresh the file list after uploading
+                addFileToFirestore(result.info); // Save the uploaded file to Firestore
             }
         });
 
@@ -124,30 +124,39 @@
             fetchUploadedFiles(folderId);  // Fetch files as soon as the page loads
         };
 
+        // Save uploaded file info to Firestore
+        async function addFileToFirestore(fileInfo) {
+            try {
+                const filesRef = collection(db, "folders", folderId, "files");
+                await addDoc(filesRef, {
+                    public_id: fileInfo.public_id,
+                    url: fileInfo.secure_url,
+                    name: fileInfo.original_filename,
+                    uploaded_at: new Date(),
+                });
+            } catch (error) {
+                console.error("Error saving file to Firestore: ", error);
+            }
+        }
+
         // Fetch and display uploaded files
         async function fetchUploadedFiles(folderId) {
             try {
-                const response = await fetch(`http://localhost:3000/fetch-files?folderId=${folderId}`);
-                const files = await response.json();
+                const filesRef = query(collection(db, "folders", folderId, "files"));
+                onSnapshot(filesRef, (snapshot) => {
+                    const fileListContainer = document.getElementById('file-list');
+                    fileListContainer.innerHTML = ''; // Clear the current list
 
-                const fileListContainer = document.getElementById('file-list');
-                fileListContainer.innerHTML = ''; // Clear the current list
-
-                if (files.length > 0) {
-                    files.forEach(file => {
+                    snapshot.forEach(doc => {
+                        const fileData = doc.data();
                         const listItem = document.createElement('li');
-                        const imageUrl = `https://res.cloudinary.com/dlj56dege/image/upload/${file.public_id}`;
                         const imgElement = document.createElement('img');
-                        imgElement.src = imageUrl;
-                        imgElement.alt = file.public_id;
+                        imgElement.src = fileData.url; // Assuming `url` contains the file's public URL
+                        imgElement.alt = fileData.name;
                         listItem.appendChild(imgElement);
                         fileListContainer.appendChild(listItem);
                     });
-                } else {
-                    const messageItem = document.createElement('li');
-                    messageItem.textContent = 'No files uploaded yet.';
-                    fileListContainer.appendChild(messageItem);
-                }
+                });
             } catch (error) {
                 console.error('Error fetching uploaded files:', error);
             }

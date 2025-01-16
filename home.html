@@ -12,6 +12,8 @@
         <header>
             <h1>Shared Folders</h1>
             <button id="logout-button">Logout</button>
+            <button id="delete-folder-button">Delete Folder</button>
+
         </header>
 
         <!-- Main Section -->
@@ -128,6 +130,81 @@ async function fetchFolders() {
             await uploadBytes(storageRef, file);
             console.log('File uploaded successfully');
         }
+        // Add event listener to delete folder button
+document.getElementById('delete-folder-button').addEventListener('click', async function() {
+    const confirmDelete = confirm("Are you sure you want to delete this folder and all its contents?");
+    if (confirmDelete) {
+        try {
+            // Delete the folder in Firestore
+            await deleteFolderFromFirestore(folderId);
+            
+            // Delete files from Cloudinary (optional if you want to delete them too)
+            await deleteFilesFromCloudinary(folderId);
+
+            // Redirect to home or folder list page after deletion
+            window.location.href = 'home.html'; // Or redirect to any other page
+        } catch (error) {
+            console.error("Error deleting folder: ", error);
+            alert("There was an error deleting the folder.");
+        }
+    }
+});
+
+// Function to delete folder from Firestore
+async function deleteFolderFromFirestore(folderId) {
+    try {
+        const folderDocRef = doc(db, "folders", folderId);
+        await deleteDoc(folderDocRef);  // This deletes the folder document
+
+        // Delete all files associated with this folder in Firestore
+        const filesRef = collection(db, "folders", folderId, "files");
+        const filesSnapshot = await getDocs(filesRef);
+        filesSnapshot.forEach(async (fileDoc) => {
+            await deleteDoc(fileDoc.ref);  // Delete each file document from Firestore
+        });
+    } catch (error) {
+        console.error("Error deleting folder from Firestore: ", error);
+        throw new Error("Failed to delete folder from Firestore");
+    }
+}
+
+// Function to delete all files from Cloudinary (optional)
+async function deleteFilesFromCloudinary(folderId) {
+    try {
+        // Get all files in the folder (we already have their public IDs stored in Firestore)
+        const filesRef = collection(db, "folders", folderId, "files");
+        const filesSnapshot = await getDocs(filesRef);
+        
+        filesSnapshot.forEach(async (fileDoc) => {
+            const fileData = fileDoc.data();
+            const publicId = fileData.public_id;
+            
+            // Make a request to Cloudinary to delete the file
+            const cloudinaryDeleteUrl = `https://api.cloudinary.com/v1_1/dlj56dege/delete_by_public_id`;
+            const response = await fetch(cloudinaryDeleteUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    public_id: publicId,
+                    api_key: 'your_cloudinary_api_key', // Replace with your Cloudinary API key
+                    api_secret: 'your_cloudinary_api_secret', // Replace with your Cloudinary API secret
+                })
+            });
+            
+            if (response.ok) {
+                console.log(`File with public ID ${publicId} deleted successfully.`);
+            } else {
+                console.error("Error deleting file from Cloudinary:", await response.text());
+            }
+        });
+    } catch (error) {
+        console.error("Error deleting files from Cloudinary: ", error);
+        throw new Error("Failed to delete files from Cloudinary");
+    }
+}
+
     
     </script>
     

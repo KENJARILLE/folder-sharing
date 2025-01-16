@@ -44,7 +44,7 @@
     <script type="module">
         // Firebase configuration (for Firestore)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, collection, addDoc, query, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, addDoc, query, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { getAuth } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -162,61 +162,62 @@
                 console.error('Error fetching uploaded files:', error);
             }
         }
+
         // Add event listener for the "Delete Folder" button
-document.getElementById('delete-folder-button').addEventListener('click', async () => {
-    const confirmation = confirm("Are you sure you want to delete this folder and its contents?");
-    if (confirmation) {
-        try {
-            // Delete all files associated with the folder in Firestore
-            const filesRef = collection(db, "folders", folderId, "files");
-            const filesSnapshot = await getDocs(filesRef);
-            filesSnapshot.forEach(async (fileDoc) => {
-                const fileData = fileDoc.data();
-                // Delete file from Cloudinary
-                await deleteFileFromCloudinary(fileData.public_id);
-                // Delete file from Firestore
-                await deleteDoc(fileDoc.ref);
-            });
+        document.getElementById('delete-folder-button').addEventListener('click', async () => {
+            const confirmation = confirm("Are you sure you want to delete this folder and its contents?");
+            if (confirmation) {
+                try {
+                    // Delete all files associated with the folder in Firestore
+                    const filesRef = collection(db, "folders", folderId, "files");
+                    const filesSnapshot = await getDocs(filesRef);
+                    filesSnapshot.forEach(async (fileDoc) => {
+                        const fileData = fileDoc.data();
+                        // Delete file from Cloudinary
+                        await deleteFileFromCloudinary(fileData.public_id);
+                        // Delete file from Firestore
+                        await deleteDoc(fileDoc.ref);
+                    });
 
-            // Delete the folder document from Firestore
-            const folderDocRef = doc(db, "folders", folderId);
-            await deleteDoc(folderDocRef);
+                    // Delete the folder document from Firestore
+                    const folderDocRef = doc(db, "folders", folderId);
+                    await deleteDoc(folderDocRef);
 
-            alert("Folder and its files have been deleted.");
-            window.location.href = 'home.html';  // Redirect after deletion
+                    alert("Folder and its files have been deleted.");
+                    window.location.href = 'home.html';  // Redirect after deletion
 
-        } catch (error) {
-            console.error("Error deleting folder and files: ", error);
-            alert("An error occurred while deleting the folder.");
-        }
-    }
-});
-
-// Function to delete a file from Cloudinary
-async function deleteFileFromCloudinary(publicId) {
-    try {
-        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/dlj56dege/image/destroy`;
-        const formData = new FormData();
-        formData.append('public_id', publicId);
-
-        const response = await fetch(cloudinaryUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${btoa('your_api_key:your_api_secret')}`  // Use your Cloudinary API credentials
-            },
-            body: formData
+                } catch (error) {
+                    console.error("Error deleting folder and files: ", error);
+                    alert("An error occurred while deleting the folder.");
+                }
+            }
         });
 
-        const data = await response.json();
-        if (data.result === 'ok') {
-            console.log(`File ${publicId} deleted successfully from Cloudinary.`);
-        } else {
-            console.error(`Error deleting file from Cloudinary: ${data.error.message}`);
+        // Function to delete a file from Cloudinary
+        async function deleteFileFromCloudinary(publicId) {
+            try {
+                const cloudinaryUrl = `https://api.cloudinary.com/v1_1/dlj56dege/image/destroy`;
+                const formData = new FormData();
+                formData.append('public_id', publicId);
+
+                const response = await fetch(cloudinaryUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${btoa('win1tf56FH-UVSwWNas69Ojsndk')}`  // Use your Cloudinary API credentials
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.result === 'ok') {
+                    console.log(`File ${publicId} deleted successfully from Cloudinary.`);
+                } else {
+                    console.error(`Error deleting file from Cloudinary: ${data.error.message}`);
+                }
+            } catch (error) {
+                console.error('Error deleting file from Cloudinary:', error);
+            }
         }
-    } catch (error) {
-        console.error('Error deleting file from Cloudinary:', error);
-    }
-}
 
     </script>
 </body>

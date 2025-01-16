@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder Details - Shared Folders</title>
+    <link rel="stylesheet" href="folder.css">
+    <script src="https://upload-widget.cloudinary.com/global/all.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <h1>Folder Details</h1>
+            <div class="header-buttons">
+                <button id="back-button">Back</button>
+                <button id="logout-button">Logout</button>
+            </div>
+        </header>
+
+        <!-- Main Section -->
+        <main>
+            <section class="folder-info">
+                <h2 id="folder-name"></h2>
+                <p id="folder-id"></p>
+            </section>
+
+            <section class="file-upload">
+                <h3>Upload Files to This Folder</h3>
+                <input type="file" id="file-input" />
+                <button id="upload-button">Upload File</button>
+            </section>
+
+            <section class="uploaded-files">
+                <h3>Uploaded Files</h3>
+                <ul id="file-list">
+                    <!-- Files will be listed here -->
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        // Firebase configuration (for Firestore)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB1wwcVJpZHraOaJOG1w5yFDJEk_T-6qBk",
+            authDomain: "folder-sharing-f7df9.firebaseapp.com",
+            projectId: "folder-sharing-f7df9",
+            storageBucket: "folder-sharing-f7df9.appspot.com",
+            messagingSenderId: "464700051533",
+            appId: "1:464700051533:web:612e3e27ae3624ee8b4c04",
+            measurementId: "G-9Q7SYT6BWF"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth();
+
+        // Get folderId from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const folderId = urlParams.get("folderId");
+
+        if (!folderId) {
+            alert("Folder ID is missing from the URL.");
+            window.location.href = "index.html";  // Redirect to a different page if folderId is missing
+        }
+
+        // Fetch folder data from Firestore
+        async function fetchFolderData() {
+            try {
+                const folderDocRef = doc(db, "folders", folderId);
+                const folderDocSnap = await getDoc(folderDocRef);
+                if (folderDocSnap.exists()) {
+                    const folderData = folderDocSnap.data();
+                    document.getElementById("folder-name").textContent = folderData.name;
+                    document.getElementById("folder-id").textContent = `Folder ID: ${folderId}`;
+                } else {
+                    console.log("No such document!");
+                }
+            } catch (error) {
+                console.error("Error fetching folder data: ", error);
+            }
+        }
+
+        // Add event listeners to the buttons
+        document.getElementById('logout-button').addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('back-button').addEventListener('click', function() {
+            window.location.href = 'home.html';
+        });
+
+        // Initialize Cloudinary Upload Widget
+        const cloudinaryWidget = cloudinary.createUploadWidget({
+            cloudName: 'dlj56dege', // replace with your Cloudinary cloud name
+            uploadPreset: 'folder-sharing', // replace with your Cloudinary upload preset
+            sources: ['local', 'url', 'camera'],
+            resourceType: 'auto',
+            folder: `folder-sharing/${folderId}`, // dynamically set folder path using folderId
+            publicId: (file) => {
+                return `${folderId}/${file.name}`; // Optional: set a custom public ID based on folderId
+            }
+        }, (error, result) => {
+            if (result && result.event === "success") {
+                console.log("File uploaded to Cloudinary:", result.info);
+                fetchUploadedFiles(folderId);  // Refresh the file list after uploading
+            }
+        });
+
+        // Handle file upload button click
+        document.getElementById('upload-button').addEventListener("click", () => {
+            cloudinaryWidget.open();
+        });
+
+        // Fetch folder data when the page loads
+        window.onload = () => {
+            fetchFolderData();
+            fetchUploadedFiles(folderId);  // Fetch files as soon as the page loads
+        };
+
+        // Fetch and display uploaded files
+        async function fetchUploadedFiles(folderId) {
+            try {
+                const response = await fetch(`http://localhost:3000/fetch-files?folderId=${folderId}`);
+                const files = await response.json();
+
+                const fileListContainer = document.getElementById('file-list');
+                fileListContainer.innerHTML = ''; // Clear the current list
+
+                if (files.length > 0) {
+                    files.forEach(file => {
+                        const listItem = document.createElement('li');
+                        const imageUrl = `https://res.cloudinary.com/dlj56dege/image/upload/${file.public_id}`;
+                        const imgElement = document.createElement('img');
+                        imgElement.src = imageUrl;
+                        imgElement.alt = file.public_id;
+                        listItem.appendChild(imgElement);
+                        fileListContainer.appendChild(listItem);
+                    });
+                } else {
+                    const messageItem = document.createElement('li');
+                    messageItem.textContent = 'No files uploaded yet.';
+                    fileListContainer.appendChild(messageItem);
+                }
+            } catch (error) {
+                console.error('Error fetching uploaded files:', error);
+            }
+        }
+    </script>
+</body>
+</html>

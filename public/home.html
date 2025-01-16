@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Shared Folders</title>
+    <link rel="stylesheet" href="home.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <h1>Shared Folders</h1>
+            <button id="logout-button">Logout</button>
+        </header>
+
+        <!-- Main Section -->
+        <main>
+            <section class="create-folder">
+                <h2>Create New Folder</h2>
+                <form id="folder-form">
+                    <input type="text" id="folder-name" placeholder="Folder Name" required>
+                    <button type="submit">Create Folder</button>
+                </form>
+            </section>
+
+            <section class="folder-list">
+                <h2>Your Folders</h2>
+                <ul id="folders">
+                    <!-- Folders will be dynamically added here -->
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase SDK (load as ES Modules) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { getStorage, ref, uploadBytes } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js";
+    
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB1wwcVJpZHraOaJOG1w5yFDJEk_T-6qBk",
+            authDomain: "folder-sharing-f7df9.firebaseapp.com",
+            projectId: "folder-sharing-f7df9",
+            storageBucket: "folder-sharing-f7df9.appspot.com",
+            messagingSenderId: "464700051533",
+            appId: "1:464700051533:web:612e3e27ae3624ee8b4c04",
+            measurementId: "G-9Q7SYT6BWF"
+        };
+    
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth();
+        const storage = getStorage(app);
+    
+        // Add event listener to the logout button
+        document.getElementById('logout-button').addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+    
+        // Handle folder creation
+        document.getElementById('folder-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+    
+            const folderName = document.getElementById('folder-name').value;
+    
+            try {
+                // Add folder to Firestore
+                const docRef = await addDoc(collection(db, "folders"), {
+                    name: folderName,
+                    createdAt: new Date(),
+                    createdBy: auth.currentUser.uid
+                });
+                console.log("Folder created with ID: ", docRef.id);
+                document.getElementById('folder-name').value = '';  // Clear input
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        });
+    
+        // Function to fetch and display folders in real-time
+// Function to fetch and display folders in real-time
+async function fetchFolders() {
+    const foldersContainer = document.getElementById('folders');
+    
+    // Set up real-time listener for Firestore collection 'folders'
+    const unsubscribe = onSnapshot(collection(db, "folders"), (querySnapshot) => {
+        querySnapshot.forEach((doc) => {
+            const folderData = doc.data();
+            const folderItem = document.createElement('li');
+            folderItem.classList.add('folder-item');
+            folderItem.textContent = folderData.name;
+            folderItem.setAttribute('data-id', doc.id);  // Add folder ID to each folder item
+
+            // Add click event to open folder
+            folderItem.addEventListener('click', function() {
+                openFolder(doc.id);  // Open folder using its ID
+            });
+
+            // Check if folder already exists in the list to avoid duplication
+            if (!foldersContainer.querySelector(`[data-id="${doc.id}"]`)) {
+                foldersContainer.appendChild(folderItem);
+            }
+        });
+    });
+
+    // To stop listening for changes, you can call unsubscribe()
+    // unsubscribe();
+}
+
+    
+        // Function to handle folder click (open the folder)
+        function openFolder(folderId) {
+            // Example: Navigate to a new page with the folder ID in the URL (optional)
+            window.location.href = `folder.html?folderId=${folderId}`;
+        }
+    
+        // Fetch folders when the page loads
+        window.onload = fetchFolders;
+    
+        // Example of file upload to Firebase Storage
+        async function uploadFile(file, folderId) {
+            const storageRef = ref(storage, `folders/${folderId}/${file.name}`);
+            await uploadBytes(storageRef, file);
+            console.log('File uploaded successfully');
+        }
+    
+    </script>
+    
+
+</body>
+</html>

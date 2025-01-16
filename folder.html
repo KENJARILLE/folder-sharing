@@ -162,7 +162,7 @@
                 console.error('Error fetching uploaded files:', error);
             }
         }
-
+        import { getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"; 
         // Add event listener for the "Delete Folder" button
         document.getElementById('delete-folder-button').addEventListener('click', async () => {
             const confirmation = confirm("Are you sure you want to delete this folder and its contents?");

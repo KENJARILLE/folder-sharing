@@ -140,27 +140,33 @@
         }
     
         // Fetch and display uploaded files
-        async function fetchUploadedFiles(folderId) {
-            try {
-                const filesRef = query(collection(db, "folders", folderId, "files"));
-                onSnapshot(filesRef, (snapshot) => {
-                    const fileListContainer = document.getElementById('file-list');
-                    fileListContainer.innerHTML = ''; // Clear the current list
-    
-                    snapshot.forEach(doc => {
-                        const fileData = doc.data();
-                        const listItem = document.createElement('li');
-                        const imgElement = document.createElement('img');
-                        imgElement.src = fileData.url; // Assuming `url` contains the file's public URL
-                        imgElement.alt = fileData.name;
-                        listItem.appendChild(imgElement);
-                        fileListContainer.appendChild(listItem);
-                    });
-                });
-            } catch (error) {
-                console.error('Error fetching uploaded files:', error);
+// Fetch and display uploaded files
+async function fetchUploadedFiles(folderId) {
+    try {
+        const filesRef = query(collection(db, "folders", folderId, "files"));
+        onSnapshot(filesRef, (snapshot) => {
+            const fileListContainer = document.getElementById('file-list');
+            fileListContainer.innerHTML = ''; // Clear the current list
+
+            if (snapshot.empty) {
+                fileListContainer.innerHTML = '<p>No files found.</p>';
             }
-        }
+
+            snapshot.forEach(doc => {
+                const fileData = doc.data();
+                const listItem = document.createElement('li');
+                const imgElement = document.createElement('img');
+                imgElement.src = fileData.url; // Assuming `url` contains the file's public URL
+                imgElement.alt = fileData.name;
+                listItem.appendChild(imgElement);
+                fileListContainer.appendChild(listItem);
+            });
+        });
+    } catch (error) {
+        console.error('Error fetching uploaded files:', error);
+    }
+}
+
     
         // Add event listener for the "Delete Folder" button
         document.getElementById('delete-folder-button').addEventListener('click', async () => {
